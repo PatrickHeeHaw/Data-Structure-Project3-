@@ -1,3 +1,4 @@
+
  #include <iostream>
 using namespace std;
 
@@ -46,21 +47,34 @@ public:
     // Constructor
     NovelQueue() : front(nullptr), tail(nullptr), size(0) {}
 
-    // Enqueue operation that adds a job to the queue
-    void enqueue(DT job) {
-        Queue<DT>* newNode = new Queue<DT>(job);
-        if (front == nullptr) {
-            front = tail = newNode;
-        } else {
-            tail->next = newNode;
-            tail = newNode;
+         // Enqueue operation that adds a job to the queue
+        void enqueue(DT job) {
+            // Check if a job with the same ID already exists in the queue
+            Queue<DT>* current = front;
+            while (current != nullptr) {
+                if (current->JobPointer->job_id == job->job_id) {
+                    cout << "Job ID " << job->job_id << " already exists!" << endl;
+                    return; // Exit the function without adding the job
+                }
+                current = current->next;
+            }
+
+            // Create a new node for the job
+            Queue<DT>* newNode = new Queue<DT>(job);
+            if (front == nullptr) {
+                front = tail = newNode; // If the queue is empty, set both front and tail to the new node
+            } else {
+                tail->next = newNode; // Link the new node to the end of the queue
+                tail = newNode; // Update the tail pointer to the new node
+            }
+            size++;
+            cout << "Enqueued Job:" << endl;
+            job->display();
+            cout << "Jobs after enqueue:" << endl;
+            display();
         }
-        size++;
-        cout << "Enqueued Job:" << endl;
-        job->display();
-        cout << "Jobs after enqueue:" << endl;
-        display();
-    }
+
+
 
         // Dequeue operation that removes a job from the queue
         DT dequeue() {
@@ -93,7 +107,7 @@ public:
             }
             current = current->next;
         }
-        cout << "Job ID " << job_id << " not found!" << endl;
+        cout << "Job ID " << job_id << " not found in the queue." << endl;
     }
 
     // Change operation that alters a specific field of a job
@@ -129,28 +143,28 @@ public:
             }
             current = current->next;
         }
-        cout << "Job ID " << job_id << " not found!" << endl;
+        cout << "Job with ID " << job_id << " not found in the queue." << endl;
     }
 
   void promote(int job_id, int positions) {
-     if (size <= 1) {  // If the queue has only one element or less than one element
+    if (size <= 1) {
         cout << "Queue is too small to promote.\n";
         return;
     }
-    
-    Queue<DT>* current = front;  // Start from the front
-    Queue<DT>* previous = nullptr;  // Pointer to the previous node
-    int currentPosition = 0;  // Current position in the queue
+
+    Queue<DT>* current = front;
+    Queue<DT>* previous = nullptr;
+    int currentPosition = 0;
 
     // Find the job by its ID
-    while (current && current->JobPointer->job_id != job_id) {  // Traverse the queue
-        previous = current;  // Update the previous node
-        current = current->next;  // Move to the next node
-        currentPosition++;  // Increment the current position
+    while (current && current->JobPointer->job_id != job_id) {
+        previous = current;
+        current = current->next;
+        currentPosition++;
     }
 
     // If the job is not found
-    if (!current) {  
+    if (!current) {
         cout << "Job with ID " << job_id << " not found.\n";
         return;
     }
@@ -161,48 +175,58 @@ public:
         return;
     }
 
-    int newIndex = currentPosition - positions;  // Calculate the new index
+    // Calculate new position
+    int newIndex = currentPosition - positions;
     if (newIndex < 0) {
-        newIndex = 0;  // If the new index is less than 0, move it to the front
+        newIndex = 0;  // Move to the front
     }
 
-    // Remove the node from the current position
+    // Remove the job from its current position
     if (previous) {
-        previous->next = current->next;  // Unlink the current node from the list
+        previous->next = current->next; // Unlink the current node
+    } else {
+        front = current->next; // Move front if it's the first node
     }
 
-    // Reinsert the node at the new position
-    if (newIndex == 0) {
-        // Move the node to the front
-        current->next = front;
-        front = current;
-    } else {
-        // Move the node to the new position
-        Queue<DT>* temp = front;  // Start from the front
-        Queue<DT>* tempPrev = nullptr;  // Pointer to the previous node
-        int index = 0;  // Current index
+    // Check if the promoted job was the tail
+    if (current == tail) {
+        tail = previous; // Update the tail to the previous node if it was the tail
+    }
 
-        while (temp && index < newIndex) {  // Traverse the queue
-            tempPrev = temp;  // Update the previous node
-            temp = temp->next;  // Move to the next node
-            index++;  // Increment the index
+    // Reinsert the job at the new position
+    if (newIndex == 0) {
+        current->next = front; // Link to the front
+        front = current; // Move to the front
+    } else {
+        Queue<DT>* temp = front;
+        Queue<DT>* tempPrev = nullptr;
+        int index = 0;
+
+        while (temp && index < newIndex) {
+            tempPrev = temp;
+            temp = temp->next;
+            index++;
         }
 
         // Insert the node at the correct position
-        if (tempPrev) {  // If the previous node exists
-            current->next = tempPrev->next;  // Link the current node to the next node
-            tempPrev->next = current;  // Link the previous node to the current node
+        if (tempPrev) {
+            tempPrev->next = current; // Link to the new node
+            current->next = temp; // Link to the next node
         }
     }
-    
 
+    // Update the tail if the current node is now at the end
+    if (current->next == nullptr) {
+        tail = current; // Update tail if the node is now at the end of the list
+    }
 
-    // Print the promoted job details
+    // Print promoted job details
     cout << "Promoted Job ID " << job_id << " by " << positions << " position(s):" << endl;
     current->JobPointer->display();
     cout << "Jobs after promotion:" << endl;
     display();
 }
+
 
 // Display operation that shows the queue state
 void display() const {
@@ -216,10 +240,11 @@ void display() const {
         current = current->next;
     }
 }
-    // Reorder operation that sorts the queue based on the specified attribute
-    NovelQueue<DT>* reorder(int attribute_index) {
-        NovelQueue<DT>* reorderedQueue = new NovelQueue<DT>();
-// Extract jobs one by one and insert them into the new sorted queue.
+    /// Reorder operation that sorts the queue based on the specified attribute
+NovelQueue<DT>* reorder(int attribute_index) {
+    NovelQueue<DT>* reorderedQueue = new NovelQueue<DT>();
+
+    // Extract jobs one by one and insert them into the new sorted queue.
     while (front != nullptr) {
         Queue<DT>* current = front;
         front = front->next;
@@ -234,8 +259,7 @@ void display() const {
 
             // Determine the position based on the attribute.
             while (temp != nullptr &&
-                (attribute_index == 1 ? temp->JobPointer->job_id < current->JobPointer->job_id
-                                      : temp->JobPointer->priority < current->JobPointer->priority)) {
+                compareJobs(temp->JobPointer, current->JobPointer, attribute_index)) {
                 prev = temp;
                 temp = temp->next;
             }
@@ -259,21 +283,30 @@ void display() const {
 
     // Transfer the size to the reordered queue.
     reorderedQueue->size = this->size;
-    this->size = 0; // Clear the size of the original queue since it is now empty.
+    // this->size = 0; // Clear the size of the original queue since it is now empty.
 
     return reorderedQueue;
 }
 
 
-    // List Jobs operation that displays the job attributes
-    void listJobs() const {
-        Queue<DT>* current = front;
-        cout << "List of jobs sorted by job IDs:" << endl;
-        while (current != nullptr) {
-            current->JobPointer->display();
-            current = current->next;
-        }
+   // List Jobs operation that displays the job attributes in order of Job IDs
+void listJobs() const {
+    // Create a reordered queue sorted by Job ID (assuming attribute_index 1 corresponds to job_id)
+    NovelQueue<DT>* sortedQueue = const_cast<NovelQueue<DT>*>(this)->reorder(1);
+
+    Queue<DT>* current = sortedQueue->front;
+    cout << "List of jobs sorted by job IDs:" << endl;
+
+    // Iterate through the sorted queue and display each job
+    while (current != nullptr) {
+        current->JobPointer->display();
+        current = current->next;
     }
+
+    // Clean up the temporary sorted queue to avoid memory leaks
+    delete sortedQueue;
+}
+
 
     // Count operation that returns the number of elements in the queue
     int count() const {
@@ -286,6 +319,38 @@ void display() const {
             dequeue();
         }
     }
+
+    // Helper function to compare two jobs based on the attribute index
+bool compareJobs(CPUJob* job1, CPUJob* job2, int attribute_index) {
+    switch (attribute_index) {
+        case 1: // Compare by job_id
+            return job1->job_id < job2->job_id;
+        case 2: // Compare by priority
+            if (job1->priority == job2->priority) {
+                return job1->job_id < job2->job_id; // Break ties with job_id
+            }
+            return job1->priority < job2->priority;
+        case 3: // Compare by job_type
+            if (job1->job_type == job2->job_type) {
+                return job1->job_id < job2->job_id; // Break ties with job_id
+            }
+            return job1->job_type < job2->job_type;
+        case 4: // Compare by CPU time consumed
+            if (job1->cpu_time_consumed == job2->cpu_time_consumed) {
+                return job1->job_id < job2->job_id; // Break ties with job_id
+            }
+            return job1->cpu_time_consumed < job2->cpu_time_consumed;
+        case 5: // Compare by memory consumed
+            if (job1->memory_consumed == job2->memory_consumed) {
+                return job1->job_id < job2->job_id; // Break ties with job_id
+            }
+            return job1->memory_consumed < job2->memory_consumed;
+        default:
+            cout << "Invalid attribute index!" << endl;
+            return false;
+    }
+}
+
 };
 
 int main() {
@@ -345,16 +410,17 @@ int main() {
                 NovelQueue<CPUJob*>* reorderedQueue = myNovelQueue->reorder(attribute_index);
                 delete myNovelQueue; // Clean up the original queue without additional prints.
                 myNovelQueue = reorderedQueue; // Replace with the reordered version.
-                cout << "Reordered Queue:" << endl;
-                myNovelQueue->display(); // Only one explicit call to display.
+                cout << "Reordered Queue by attribute "<< attribute_index << ":" << endl;
+                (*myNovelQueue).display(); // Only one explicit call to display.
                 break;
             }
             case 'D':{ // Display
+                cout << "Displaying all jobs in the queue:" << endl;
                 (*myNovelQueue).display();
                 break;
             }
             case 'N': {//Count 
-               cout << "Displaying all jobs in the queue: " << (*myNovelQueue).count() << endl;
+               cout << "Number of elements in the queue: " << (*myNovelQueue).count() << endl;
                 break;
             }
             case 'L':{ // List Jobs 
