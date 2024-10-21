@@ -1,4 +1,3 @@
-
  #include <iostream>
 using namespace std;
 
@@ -61,24 +60,21 @@ public:
         job->display();
         cout << "Jobs after enqueue:" << endl;
         display();
-        cout << endl;
     }
 
-    // Dequeue operation that removes a job from the queue
-    DT dequeue() {
-        if (front == nullptr) {
-            cout << "Queue is empty!" << endl;
-            return nullptr;
+        // Dequeue operation that removes a job from the queue
+        DT dequeue() {
+            if (front == nullptr) {
+                cout << "Queue is empty!" << endl;
+                return nullptr;
+            }
+            Queue<DT>* temp = front;
+            front = front->next;
+            DT job = temp->JobPointer;
+            delete temp;
+            size--;
+            return job;
         }
-        Queue<DT>* temp = front;
-        front = front->next;
-        DT job = temp->JobPointer;
-        delete temp;
-        size--;
-        cout << "Jobs after dequeue:" << endl;
-        display();
-        return job;
-    }
 
     // Modify operation that changes the job attributes
     void modify(int job_id, int new_priority, int new_job_type, int new_cpu_time_consumed, int new_memory_consumed) {
@@ -220,37 +216,54 @@ void display() const {
         current = current->next;
     }
 }
-
     // Reorder operation that sorts the queue based on the specified attribute
     NovelQueue<DT>* reorder(int attribute_index) {
         NovelQueue<DT>* reorderedQueue = new NovelQueue<DT>();
+// Extract jobs one by one and insert them into the new sorted queue.
+    while (front != nullptr) {
         Queue<DT>* current = front;
-        while (current != nullptr) {
-            Queue<DT>* next = current->next;
-            current->next = nullptr;
+        front = front->next;
+        current->next = nullptr;
 
-            if (reorderedQueue->front == nullptr) {
-                reorderedQueue->front = reorderedQueue->tail = current;
+        // If reorderedQueue is empty, directly insert.
+        if (reorderedQueue->front == nullptr) {
+            reorderedQueue->front = reorderedQueue->tail = current;
+        } else {
+            Queue<DT>* prev = nullptr;
+            Queue<DT>* temp = reorderedQueue->front;
+
+            // Determine the position based on the attribute.
+            while (temp != nullptr &&
+                (attribute_index == 1 ? temp->JobPointer->job_id < current->JobPointer->job_id
+                                      : temp->JobPointer->priority < current->JobPointer->priority)) {
+                prev = temp;
+                temp = temp->next;
+            }
+
+            if (prev == nullptr) {
+                // Insert at the front of the reordered queue.
+                current->next = reorderedQueue->front;
+                reorderedQueue->front = current;
             } else {
-                Queue<DT>* prev = nullptr;
-                Queue<DT>* temp = reorderedQueue->front;
-
-                while (temp != nullptr && (attribute_index == 1 ? temp->JobPointer->job_id < current->JobPointer->job_id : temp->JobPointer->priority < current->JobPointer->priority)) {
-                    prev = temp;
-                    temp = temp->next;
-                }
-
-                if (prev != nullptr) {
-                    prev->next = current;
-                } else {
-                    reorderedQueue->front = current;
-                }
+                // Insert between prev and temp.
+                prev->next = current;
                 current->next = temp;
             }
-            current = next;
+
+            // Update the tail if we inserted at the end.
+            if (current->next == nullptr) {
+                reorderedQueue->tail = current;
+            }
         }
-        return reorderedQueue;
     }
+
+    // Transfer the size to the reordered queue.
+    reorderedQueue->size = this->size;
+    this->size = 0; // Clear the size of the original queue since it is now empty.
+
+    return reorderedQueue;
+}
+
 
     // List Jobs operation that displays the job attributes
     void listJobs() const {
@@ -301,13 +314,15 @@ int main() {
                 break;
             }
             case 'R': { // Remove (Dequeue)
-               CPUJob* removedJob = (*myNovelQueue).dequeue();
-               if(removedJob){
-                cout << "Dequeued Job: ";
-                (*removedJob).display();
-                delete removedJob; // Clean up memory after use
-               }
-               break;
+                CPUJob* removedJob = (*myNovelQueue).dequeue();
+                if (removedJob) {
+                    cout << "Dequeued Job:" << endl;
+                    removedJob->display();
+                    cout << "Jobs after dequeue:" << endl;
+                    (*myNovelQueue).display();
+                    delete removedJob; // Clean up memory after use
+                }
+                break;
             }
             case 'M':{ // Modify 
                 cin >> job_id >> new_priority >> new_job_type;
@@ -325,11 +340,13 @@ int main() {
                 (*myNovelQueue).promote(job_id, positions);
                 break;
             }
-            case 'O': {  //Reorder
-                cin  >>  attribute_index;
-                NovelQueue<CPUJob*>* reorderedQueue = (*myNovelQueue).reorder(attribute_index);
+          case 'O': {  // Reorder
+                cin >> attribute_index;
+                NovelQueue<CPUJob*>* reorderedQueue = myNovelQueue->reorder(attribute_index);
+                delete myNovelQueue; // Clean up the original queue without additional prints.
+                myNovelQueue = reorderedQueue; // Replace with the reordered version.
                 cout << "Reordered Queue:" << endl;
-                (*reorderedQueue).display();
+                myNovelQueue->display(); // Only one explicit call to display.
                 break;
             }
             case 'D':{ // Display
@@ -337,7 +354,7 @@ int main() {
                 break;
             }
             case 'N': {//Count 
-               cout << "Number of elements in the queue: " << (*myNovelQueue).count() << endl;
+               cout << "Displaying all jobs in the queue: " << (*myNovelQueue).count() << endl;
                 break;
             }
             case 'L':{ // List Jobs 
